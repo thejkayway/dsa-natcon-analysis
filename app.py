@@ -26,6 +26,11 @@ server = app.server
 
 voters = pd.read_csv("resources/DSANatCon2021Votes_withCluster.csv")
 
+
+#############################################
+######## Begin Plotly Graph Creation ########
+#############################################
+
 # Main Heatmap
 all_votes = go.Figure(data=go.Heatmap(
                    z=voters["Vote Choice"].apply(toInt),
@@ -92,7 +97,12 @@ cluster_heatmaps.update_layout(height=1600, width=1200, title_text="The Six Type
 
 
 # Sunburst Plots
-clusters_by_city = voters[['City', 'Cluster']].groupby('City').agg(Count=pd.NamedAgg(column="Cluster", aggfunc="value_counts")).reset_index()
+clusters_by_city = voters[['Delegate', 'City', 'Cluster']] \
+                        .drop_duplicates() \
+                        .groupby('City') \
+                        .agg(Count=pd.NamedAgg(column="Cluster", aggfunc="value_counts")) \
+                        .reset_index()
+clusters_by_city = clusters_by_city
 clusters_by_city_sunburst = px.sunburst(clusters_by_city,
                   path=['City', 'Cluster'],
                   values='Count',
@@ -105,8 +115,9 @@ cities_by_cluster_sunburst = px.sunburst(clusters_by_city,
                   title='Cities by Cluster')
 
 
-
-######## HTML Layout ########
+###################################
+######## Begin HTML Layout ########
+###################################
 app.layout = html.Div([
     dbc.NavbarSimple(
         children=[
