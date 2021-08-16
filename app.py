@@ -156,7 +156,7 @@ not_found_page = html.Div([
 @app.callback(dash.dependencies.Output('page-content', 'children'),
               [dash.dependencies.Input('url', 'pathname')])
 def display_page(pathname):
-    if pathname == '/home':
+    if pathname == '/home' or pathname == '/':
         return home_page
     elif pathname == '/clusters':
         return clusters_page
