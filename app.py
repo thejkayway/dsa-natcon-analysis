@@ -138,6 +138,15 @@ home_page = html.Div([
 
 clusters_page = html.Div([
     dcc.Graph(figure=cluster_heatmaps),
+    html.Div('Each one of the six heatmaps above represents a group of DSA voters who voted similarly. Note that this weights every vote equally, from the "germane" motion to bylaws change. Adjusting for the relative importance of each vote is a work in progress.'),
+    html.Br(),
+    html.Div('After much manual inspection, I believe the clusters tend to contain the following groups (along with assorted unidentified others of course, as no caucus represents e.g. 300 members):'),
+    html.Div('- Cluster 1: SMC'),
+    html.Div('- Cluster 2: alternates'),
+    html.Div('- Cluster 3: R&R'),
+    html.Div('- Cluster 4: "lazy" voters'),
+    html.Div('- Cluster 5: B&R'),
+    html.Div('- Cluster 6: CPN, LSC, Red Star, Red Caucus'),
 ])
 
 clusters_by_city_page = html.Div([
