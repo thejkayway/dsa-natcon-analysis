@@ -1,0 +1,10 @@
+dash
+dash-bootstrap-components
+plotly >= 5.1.0
+
+# Manipulating Data
+numpy
+pandas
+
+# Deployment
+gunicorn
