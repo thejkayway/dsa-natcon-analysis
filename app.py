@@ -3,129 +3,40 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import pandas as pd
-import numpy as np
+import charts
+import utils.filters as filters
 
-def toInt(voteChoice):
-  if voteChoice == "Yes":
-    return 1
-  if voteChoice == "No":
-    return 0
-  return np.nan
+voters = pd.read_csv("resources/DSANatCon2021Votes_withCluster.csv")
+cluster_voters_in_each_chapter = voters[['Delegate', 'City', 'Cluster']] \
+                        .drop_duplicates() \
+                        .groupby('City') \
+                        .agg(Count=pd.NamedAgg(column="Cluster", aggfunc="value_counts")) \
+                        .reset_index()
+cities = voters['City'].unique()
+cities.sort()
 
 app = dash.Dash(
     __name__,
     external_stylesheets=[dbc.themes.BOOTSTRAP],
     suppress_callback_exceptions=True
 )
-
 server = app.server
 
-voters = pd.read_csv("resources/DSANatCon2021Votes_withCluster.csv")
 
+#############################
+##### BEGIN UI CREATION #####
+#############################
 
-#############################################
-######## Begin Plotly Graph Creation ########
-#############################################
-
-# Main Heatmap
-all_votes = go.Figure(data=go.Heatmap(
-                   z=voters["Vote Choice"].apply(toInt),
-                   x=voters["Motion #"],
-                   y=voters["Delegate"]))
-all_votes.update_layout(title_text='Votes - All Delegates, All Motions')
-
-
-# Dataframe for each cluster because I'm lazy
-first_cluster = voters[voters['Cluster'] == 'First']
-second_cluster = voters[voters['Cluster'] == 'Second']
-third_cluster = voters[voters['Cluster'] == 'Third']
-fourth_cluster = voters[voters['Cluster'] == 'Fourth']
-fifth_cluster = voters[voters['Cluster'] == 'Fifth']
-sixth_cluster = voters[voters['Cluster'] == 'Sixth']
-
-cluster_heatmaps = make_subplots(rows=6, cols=1, subplot_titles=(
-    'Cluster 1: %s delegates' % first_cluster['Delegate'].nunique(),
-    'Cluster 2: %s delegates' % second_cluster['Delegate'].nunique(),
-    'Cluster 3: %s delegates' % third_cluster['Delegate'].nunique(),
-    'Cluster 4: %s delegates' % fourth_cluster['Delegate'].nunique(),
-    'Cluster 5: %s delegates' % fifth_cluster['Delegate'].nunique(),
-    'Cluster 6: %s delegates' % sixth_cluster['Delegate'].nunique(),
-))
-cluster_heatmaps.add_trace(go.Heatmap(
-                   z=first_cluster["Vote Choice"].apply(toInt),
-                   x=first_cluster["Motion #"],
-                   y=first_cluster["Delegate"],
-                   ),
-              row=1, col=1)
-cluster_heatmaps.add_trace(go.Heatmap(
-                   z=second_cluster["Vote Choice"].apply(toInt),
-                   x=second_cluster["Motion #"],
-                   y=second_cluster["Delegate"],
-                   ),
-              row=2, col=1)
-cluster_heatmaps.add_trace(go.Heatmap(
-                   z=third_cluster["Vote Choice"].apply(toInt),
-                   x=third_cluster["Motion #"],
-                   y=third_cluster["Delegate"],
-                   ),
-              row=3, col=1)
-cluster_heatmaps.add_trace(go.Heatmap(
-                   z=fourth_cluster["Vote Choice"].apply(toInt),
-                   x=fourth_cluster["Motion #"],
-                   y=fourth_cluster["Delegate"],
-                   ),
-              row=4, col=1)
-cluster_heatmaps.add_trace(go.Heatmap(
-                   z=fifth_cluster["Vote Choice"].apply(toInt),
-                   x=fifth_cluster["Motion #"],
-                   y=fifth_cluster["Delegate"],
-                   ),
-              row=5, col=1)
-cluster_heatmaps.add_trace(go.Heatmap(
-                   z=sixth_cluster["Vote Choice"].apply(toInt),
-                   x=sixth_cluster["Motion #"],
-                   y=sixth_cluster["Delegate"],
-                   ),
-              row=6, col=1)
-
-cluster_heatmaps.update_xaxes(categoryorder='category ascending')
-cluster_heatmaps.update_layout(height=1600, width=1200, title_text="The Six Types of DSA NatCon 2021 Voter")
-
-
-# Sunburst Plots
-clusters_by_city = voters[['Delegate', 'City', 'Cluster']] \
-                        .drop_duplicates() \
-                        .groupby('City') \
-                        .agg(Count=pd.NamedAgg(column="Cluster", aggfunc="value_counts")) \
-                        .reset_index()
-clusters_by_city = clusters_by_city
-clusters_by_city_sunburst = px.sunburst(clusters_by_city,
-                  path=['City', 'Cluster'],
-                  values='Count',
-                  color='Cluster',
-                  title='Clusters by City')
-cities_by_cluster_sunburst = px.sunburst(clusters_by_city,
-                  path=['Cluster', 'City'],
-                  values='Count',
-                  color='Cluster',
-                  title='Cities by Cluster')
-
-
-###################################
-######## Begin HTML Layout ########
-###################################
+### Main SPA Layout
 app.layout = html.Div([
     dbc.NavbarSimple(
         children=[
             dbc.NavItem(dbc.NavLink("Clusters", href="/clusters")),
             dbc.DropdownMenu(
                 children=[
-                    dbc.DropdownMenuItem("Cities by Cluster", href="/plots/citiesByCluster"),
-                    dbc.DropdownMenuItem("Clusters by City", href="/plots/clustersByCity"),
+                    dbc.DropdownMenuItem("Chapters in Each Cluster", href="/plots/chaptersByCluster"),
+                    dbc.DropdownMenuItem("Clusters in Each Chapter", href="/plots/clustersByChapter"),
                 ],
                 nav=True,
                 in_navbar=True,
@@ -136,43 +47,169 @@ app.layout = html.Div([
         brand_href="/home",
         color="primary",
         dark=True,),
+    dbc.Container(id='page-content'),
     dcc.Location(id='url', refresh=False),
-    html.Div(id='page-content')
 ])
 
-# Pages 
+### Pages ###
 home_page = html.Div([
-    dcc.Graph(figure=all_votes),
+    dcc.Graph(id='all-votes-heatmap'),
+    dbc.Container([
+        dbc.Row([
+            dbc.Col(
+                dbc.InputGroup([
+                    dbc.InputGroupAddon("Filter Rows", addon_type="prepend"),
+                    dbc.Input(value='', id='filter-all-voters-heatmap-rows-input', placeholder='Delegate name / chapter', debounce=False),
+                ]),
+                width={"size": 6},
+            ),
+            dbc.Col(
+                dbc.InputGroup([
+                    dbc.InputGroupAddon("Filter Columns", addon_type="prepend"),
+                    dbc.Input(value='', id='filter-all-voters-heatmap-columns-input', placeholder='Motion Acronym', debounce=False),
+                ]),
+                width={"size": 6},
+            ),
+        ]),
+    ],
+        style={"padding": "1rem"}
+    ),
     html.Div('Each row in the above heatmap is a single delegate and each column is the votes of all delegates for that voting item.'),
     html.Div('"Yes" votes are yellow, "No" votes are blue, and abstentions are left blank.'),
 ])
 
 clusters_page = html.Div([
-    dcc.Graph(figure=cluster_heatmaps),
+    dcc.Graph(id='clusters-heatmap', style={"height": "1400px"}),
+    dbc.Container(
+        [
+            dbc.Row([
+                dbc.Col(
+                    dbc.InputGroup([
+                        dbc.InputGroupAddon("Filter Rows", addon_type="prepend"),
+                        dbc.Input(value='', id='filter-clusters-heatmap-rows-input', placeholder='Delegate name / chapter', debounce=False),
+                    ]),
+                    width={"size": 6},
+                ),
+                dbc.Col(
+                    dbc.InputGroup([
+                        dbc.InputGroupAddon("Filter Columns", addon_type="prepend"),
+                        dbc.Input(value='', id='filter-clusters-heatmap-columns-input', placeholder='Motion Acronym', debounce=False),
+                    ]),
+                    width={"size": 6},
+                ),
+            ])
+        ],
+        style={"padding": "1rem"}
+    ),
     html.Div('Each one of the six heatmaps above represents a group of DSA voters who voted similarly. Note that this weights every vote equally, from the "germane" motion to bylaws change. Adjusting for the relative importance of each vote is a work in progress.'),
+    html.Div('"Yes" votes are yellow, "No" votes are blue, and abstentions are left blank.'),
     html.Br(),
     html.Div('After much manual inspection, I believe the clusters tend to contain the following groups (along with assorted unidentified others of course, as no caucus represents e.g. 300 members):'),
-    html.Div('- Cluster 1: SMC'),
-    html.Div('- Cluster 2: alternates'),
-    html.Div('- Cluster 3: R&R'),
-    html.Div('- Cluster 4: "lazy" voters'),
-    html.Div('- Cluster 5: B&R'),
-    html.Div('- Cluster 6: CPN, LSC, Red Star, Red Caucus'),
+    dbc.Container(
+        [
+            dbc.Row([
+                dbc.Col(
+                    dbc.Table([
+                        html.Thead(html.Tr([html.Th("Cluster"), html.Th("Groups Found In Cluster")])),
+                        html.Tbody([
+                            html.Tr([html.Td("First"), html.Td("SMC")]),
+                            html.Tr([html.Td("Second"), html.Td("Alternates")]),
+                            html.Tr([html.Td("Third"), html.Td("R&R")]),
+                            html.Tr([html.Td("Fourth"), html.Td("\"Lazy\" voters")]),
+                            html.Tr([html.Td("Fifth"), html.Td("B&R")]),
+                            html.Tr([html.Td("Sixth"), html.Td("CPN, LSC, Red Star, Red Caucus")]),
+                        ]),
+                    ], bordered=True),
+                    width={"size": 8, "offset": 2}
+                )
+            ]),
+        ],
+        style={"padding": "1rem"}
+    ),
+
 ])
 
-clusters_by_city_page = html.Div([
-    dcc.Graph(figure=clusters_by_city_sunburst),
+clusters_by_chapter_page = html.Div([
+    dcc.Graph(id='clusters-by-chapter-sunburst', style={"height": "600px"}),
+    dbc.Container([
+        dbc.Row([
+            dbc.Col(
+                dcc.Dropdown(
+                    id='filter-clusters-by-chapter-chapter-input',
+                    options=[{'label': city, 'value': city} for city in cities],
+                    placeholder="Select chapters",
+                    multi=True
+                ),
+                width={"size": 6},
+            ),
+            dbc.Col(
+                dcc.Dropdown(
+                    id='filter-clusters-by-chapter-cluster-input',
+                    options=[
+                        {'label': 'First', 'value': 'First'},
+                        {'label': 'Second', 'value': 'Second'},
+                        {'label': 'Third', 'value': 'Third'},
+                        {'label': 'Fourth', 'value': 'Fourth'},
+                        {'label': 'Fifth', 'value': 'Fifth'},
+                        {'label': 'Sixth', 'value': 'Sixth'},
+                    ],
+                    placeholder="Select clusters",
+                    multi=True
+                ),
+                width={"size": 6},
+            ),
+        ]),
+    ],
+        style={"padding": "1rem"}
+    ),
 ])
 
-cities_by_cluster_page = html.Div([
-    dcc.Graph(figure=cities_by_cluster_sunburst),
+chapters_by_cluster_page = html.Div([
+    dcc.Graph(id='chapters-by-cluster-sunburst', style={"height": "600px"}),
+    dbc.Container([
+        dbc.Row([
+            dbc.Col(
+                dcc.Dropdown(
+                    id='filter-chapters-by-cluster-chapter-input',
+                    options=[{'label': city, 'value': city} for city in cities],
+                    placeholder="Select chapters",
+                    multi=True
+                ),
+                width={"size": 6},
+            ),
+            dbc.Col(
+                dcc.Dropdown(
+                    id='filter-chapters-by-cluster-cluster-input',
+                    options=[
+                        {'label': 'First', 'value': 'First'},
+                        {'label': 'Second', 'value': 'Second'},
+                        {'label': 'Third', 'value': 'Third'},
+                        {'label': 'Fourth', 'value': 'Fourth'},
+                        {'label': 'Fifth', 'value': 'Fifth'},
+                        {'label': 'Sixth', 'value': 'Sixth'},
+                    ],
+                    placeholder="Select clusters",
+                    multi=True
+                ),
+                width={"size": 6},
+            ),
+        ]),
+    ],
+        style={"padding": "1rem"}
+    ),
 ])
 
 not_found_page = html.Div([
     html.H1('Page not found')
 ])
 
-# Update the index
+
+
+################################
+##### UI INTERACTION LOGIC #####
+################################
+
+### Update the index so we display correct page
 @app.callback(dash.dependencies.Output('page-content', 'children'),
               [dash.dependencies.Input('url', 'pathname')])
 def display_page(pathname):
@@ -180,12 +217,45 @@ def display_page(pathname):
         return home_page
     elif pathname == '/clusters':
         return clusters_page
-    elif pathname == '/plots/citiesByCluster':
-        return cities_by_cluster_page
-    elif pathname == '/plots/clustersByCity':
-        return clusters_by_city_page
+    elif pathname == '/plots/chaptersByCluster':
+        return chapters_by_cluster_page
+    elif pathname == '/plots/clustersByChapter':
+        return clusters_by_chapter_page
     else:
         return not_found_page
+
+### Interactive "all voters" heatmap
+@app.callback(
+    Output('all-votes-heatmap', 'figure'),
+    Input('filter-all-voters-heatmap-rows-input', 'value'),
+    Input('filter-all-voters-heatmap-columns-input', 'value'))
+def update_heatmap_all_voters(rows_filter, columns_filter):
+    return charts.all_votes_heatmap(filters.filter_heatmap(voters, rows_filter, columns_filter))
+
+### Interactive "clusters" heatmaps
+@app.callback(
+    Output('clusters-heatmap', 'figure'),
+    Input('filter-clusters-heatmap-rows-input', 'value'),
+    Input('filter-clusters-heatmap-columns-input', 'value'))
+def update_heatmap_all_voters(rows_filter, columns_filter):
+    return charts.clusters_heatmaps(filters.filter_heatmap(voters, rows_filter, columns_filter))
+
+### Interactive "clusters by chaper" sunburst
+@app.callback(
+    Output('clusters-by-chapter-sunburst', 'figure'),
+    Input('filter-clusters-by-chapter-chapter-input', 'value'),
+    Input('filter-clusters-by-chapter-cluster-input', 'value'))
+def update_clusters_by_chapter_sunburst(chapter_filter, cluster_filter):
+    return charts.clusters_by_chapter(filters.filter_sunburst(cluster_voters_in_each_chapter, chapter_filter, cluster_filter))
+
+### Interactive "chapters by cluster" sunburst
+@app.callback(
+    Output('chapters-by-cluster-sunburst', 'figure'),
+    Input('filter-chapters-by-cluster-chapter-input', 'value'),
+    Input('filter-chapters-by-cluster-cluster-input', 'value'))
+def update_chapters_by_cluster_sunburst(chapter_filter, cluster_filter):
+    return charts.chapters_by_cluster(filters.filter_sunburst(cluster_voters_in_each_chapter, chapter_filter, cluster_filter))
+
 
 if __name__ == '__main__':
     app.run_server(debug=True)
