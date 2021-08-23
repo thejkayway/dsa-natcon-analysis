@@ -2,12 +2,16 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_bootstrap_components as dbc
+import dash_table
 from dash.dependencies import Input, Output
 import pandas as pd
 import charts
 import utils.filters as filters
 
 voters = pd.read_csv("resources/DSANatCon2021Votes_withCluster.csv")
+motion_numbers_and_names = pd.read_csv("resources/motionNameNumberMapping.csv")
+voters = voters.merge(motion_numbers_and_names, on='Motion #')
+
 cluster_voters_in_each_chapter = voters[['Delegate', 'City', 'Cluster']] \
                         .drop_duplicates() \
                         .groupby('City') \
@@ -32,6 +36,7 @@ server = app.server
 app.layout = html.Div([
     dbc.NavbarSimple(
         children=[
+            dbc.NavItem(dbc.NavLink("Motion Legend", href="/legend")),
             dbc.NavItem(dbc.NavLink("Clusters", href="/clusters")),
             dbc.DropdownMenu(
                 children=[
@@ -77,6 +82,30 @@ home_page = html.Div([
     html.Div('Each row in the above heatmap is a single delegate and each column is the votes of all delegates for that voting item.'),
     html.Div('"Yes" votes are yellow, "No" votes are blue, and abstentions are left blank.'),
 ])
+
+legend_page = html.Div([
+    dash_table.DataTable(
+        style_header={'backgroundColor': 'paleturquoise'},
+        style_filter={
+            'textAlign': 'left',
+            'backgroundColor': 'rgb(204, 255, 255)',
+        },
+        style_cell={
+            'whiteSpace': 'normal',
+            'height': 'auto',
+            'textAlign': 'left',
+            'backgroundColor': 'lavender',
+            'font-family':'sans-serif',
+            'min-width': '100px',
+        },
+        filter_action='native',
+        filter_options={'case': 'insensitive'},
+        data=motion_numbers_and_names.to_dict('records'),
+        columns=[{'id': c, 'name': c} for c in motion_numbers_and_names.columns],
+        page_action='none',
+        style_table={'height': '600px', 'overflowY': 'auto'}
+    )],
+    style={"padding-top": "2rem"})
 
 clusters_page = html.Div([
     dcc.Graph(id='clusters-heatmap', style={"height": "1400px"}),
@@ -215,6 +244,8 @@ not_found_page = html.Div([
 def display_page(pathname):
     if pathname == '/home' or pathname == '/':
         return home_page
+    elif pathname == '/legend':
+        return legend_page
     elif pathname == '/clusters':
         return clusters_page
     elif pathname == '/plots/chaptersByCluster':

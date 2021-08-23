@@ -14,7 +14,9 @@ def all_votes_heatmap(voters):
      heatmap_all_votes = go.Figure(data=go.Heatmap(
                z=voters["Vote Choice"].apply(toInt),
                x=voters["Motion #"],
-               y=voters["Delegate"]))
+               y=voters["Delegate"],
+               customdata=voters["Motion Title"].apply(lambda x: (x[:57] + '...') if len(x) > 57 else x),
+               hovertemplate='<i>Motion Text</i>: %{customdata}<br><b>x</b>: %{x}<br><b>y</b>: %{y}<br><b>z</b>: %{z}<extra></extra>'))
      heatmap_all_votes.update_layout(title_text='Votes - All Delegates, All Motions')
      return heatmap_all_votes
 
@@ -39,36 +41,48 @@ def clusters_heatmaps(voters):
                     z=first_cluster["Vote Choice"].apply(toInt),
                     x=first_cluster["Motion #"],
                     y=first_cluster["Delegate"],
+                    customdata=first_cluster["Motion Title"].apply(lambda x: (x[:57] + '...') if len(x) > 57 else x),
+                    hovertemplate='<i>Motion Text</i>: %{customdata}<br><b>x</b>: %{x}<br><b>y</b>: %{y}<br><b>z</b>: %{z}<extra></extra>'
                     ),
                row=1, col=1)
      cluster_heatmaps.add_trace(go.Heatmap(
                     z=second_cluster["Vote Choice"].apply(toInt),
                     x=second_cluster["Motion #"],
                     y=second_cluster["Delegate"],
+                    customdata=second_cluster["Motion Title"].apply(lambda x: (x[:57] + '...') if len(x) > 57 else x),
+                    hovertemplate='<i>Motion Text</i>: %{customdata}<br><b>x</b>: %{x}<br><b>y</b>: %{y}<br><b>z</b>: %{z}<extra></extra>'
                     ),
                row=2, col=1)
      cluster_heatmaps.add_trace(go.Heatmap(
                     z=third_cluster["Vote Choice"].apply(toInt),
                     x=third_cluster["Motion #"],
                     y=third_cluster["Delegate"],
+                    customdata=third_cluster["Motion Title"].apply(lambda x: (x[:57] + '...') if len(x) > 57 else x),
+                    hovertemplate='<i>Motion Text</i>: %{customdata}<br><b>x</b>: %{x}<br><b>y</b>: %{y}<br><b>z</b>: %{z}<extra></extra>'
                     ),
                row=3, col=1)
      cluster_heatmaps.add_trace(go.Heatmap(
                     z=fourth_cluster["Vote Choice"].apply(toInt),
                     x=fourth_cluster["Motion #"],
                     y=fourth_cluster["Delegate"],
+                    customdata=fourth_cluster["Motion Title"].apply(lambda x: (x[:57] + '...') if len(x) > 57 else x),
+                    hovertemplate='<i>Motion Text</i>: %{customdata}<br><b>x</b>: %{x}<br><b>y</b>: %{y}<br><b>z</b>: %{z}<extra></extra>'
                     ),
                row=4, col=1)
      cluster_heatmaps.add_trace(go.Heatmap(
                     z=fifth_cluster["Vote Choice"].apply(toInt),
                     x=fifth_cluster["Motion #"],
                     y=fifth_cluster["Delegate"],
+                    customdata=fifth_cluster["Motion Title"].apply(lambda x: (x[:57] + '...') if len(x) > 57 else x),
+                    hovertemplate='<i>Motion Text</i>: %{customdata}<br><b>x</b>: %{x}<br><b>y</b>: %{y}<br><b>z</b>: %{z}<extra></extra>'
                     ),
                row=5, col=1)
      cluster_heatmaps.add_trace(go.Heatmap(
                     z=sixth_cluster["Vote Choice"].apply(toInt),
                     x=sixth_cluster["Motion #"],
                     y=sixth_cluster["Delegate"],
+                    customdata=sixth_cluster["Motion Title"].apply(lambda x: (x[:57] + '...') if len(x) > 57 else x),
+                    hovertemplate='<i>Motion Text</i>: %{customdata}<br><b>x</b>: %{x}<br><b>y</b>: %{y}<br><b>z</b>: %{z}<extra></extra>'
                     ),
                row=6, col=1)
 
